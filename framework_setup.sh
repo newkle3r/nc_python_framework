@@ -36,14 +36,14 @@ else
     fi
 fi
 
-# Check if ~/service-API exists, if not create it
-if [ ! -d ~/service-API ]; then
-    mkdir ~/service-API
-    echo "Created ~/service-API directory."
+# Check if /var/scripts/service-API exists, if not create it
+if [ ! -d /var/scripts/service-API ]; then
+    mkdir /var/scripts/service-API
+    echo "Created /var/scripts/service-API directory."
 fi
 
 # move to the service-API directory
-cd ~/service-API || exit
+cd /var/scripts/service-API || exit
 
 # Check if the service-API repository exists, if not clone it
 if [ ! -d /var/scripts/service-API/ ]; then
