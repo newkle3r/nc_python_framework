@@ -21,10 +21,9 @@ def main():
     ledger.save_env_variables()
     #ledger.store_in_redis()
     generate_docker_compose(ledger.env_vars)
+    generate_docker_env(ledger.env_vars)
+    verify_installed_packages()
+    print("Done.")
 
 if __name__ == "__main__":
-    ledger = Ledger()
-    filesystem_info = get_filesystem_info()
-
-
     main()
