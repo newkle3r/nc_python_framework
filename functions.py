@@ -14,19 +14,19 @@ from typing import Any, Callable, Dict, List, Type, TypeVar, cast
 # Load/Save Environment Variables
 # --------------------------------
 
-nextcloud_config_path = "/home/hannes/Documents/Code/nextcloud/service-API/debug-nc-config.php"
-ledger_config_path = "/home/hannes/Documents/Code/env_variables.json"
+nextcloud_config_path = "/var/www/nextcloud/config.php"
+ledger_config_path = "~/service-API/nc_python_framework/env_variables.json"
 with open(ledger_config_path, 'r') as file:
     env_vars = json.load(file)
 
 
 def save_env_variables(env_vars):
-    with open('/home/hannes/Documents/Code/env_variables.json', 'w') as file:
+    with open('~/service-API/nc_python_framework/env_variables.json', 'w') as file:
         json.dump(env_vars, file, indent=4)
 
 def get_env_variables():
-    if os.path.exists('/home/hannes/Documents/Code/env_variables.json'):
-        with open('/home/hannes/Documents/Code/env_variables.json', 'r') as file:
+    if os.path.exists('env_variables.json'):
+        with open('~/service-API/nc_python_framework/env_variables.json', 'r') as file:
             return json.load(file)
     return {}
 
