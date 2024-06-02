@@ -87,8 +87,8 @@ class Ledger:
     PAPERLESS_AUDIT_LOG_ENABLED: bool
     PAPERLESS_CONSUMER_ENABLE_COLLATE_DOUBLE_SIDED: bool
     PAPERLESS_CONSUMER_COLLATE_DOUBLE_SIDED_SUBDIR_NAME: str
-    PAPERLESS_CONVERT_BINARY: str
-    PAPERLESS_GS_BINARY: str
+    #PAPERLESS_CONVERT_BINARY: str
+    #PAPERLESS_GS_BINARY: str
     PAPERLESS_WEBSERVER_WORKERS: int
     PAPERLESS_BIND_ADDR: str
     PAPERLESS_PORT: int
@@ -172,13 +172,24 @@ class Ledger:
             self.POSTGRESHOST = gco(f"sudo grep '^listen_addresses' /etc/postgresql/{self.POSTGRESQLV}/main/postgresql.conf | awk '{{print $3}}'")
             print(f"PostgreSQL host from config: {self.POSTGRESHOST}")
 
-        self.POSTRESUSER = gco("sudo -u postgres psql -c \"\\du\" | grep 'paperless_user'")
-        if not self.POSTRESUSER:
+        self.POSTGRESUSER = gco("sudo -u postgres psql -c \"\\du\" | grep 'paperless_user'")
+
+        if not self.POSTGRESUSER:
             gco("sudo -u postgres psql -c \"CREATE USER paperless_user WITH PASSWORD 'paperless';\"")
+            self.POSTGRESPASSWORD = "paperless"
         else:
             print("User already exists")
+            self.POSTGRESPASSWORD = "paperless"
 
-        print(f"Postgres user: {self.POSTRESUSER}")
+
+        print(f"Postgres user: {self.POSTGRESUSER}")
+        self.POSTGRESDB = gco("sudo -u postgres psql -c \"\\l\" | grep 'paperless_db'")
+        if not self.POSTGRESDB:
+            gco("sudo -u postgres psql -c \"CREATE DATABASE paperless_db OWNER paperless_user;\"")
+            self.POSTGRESDB = "paperless_db"
+        else:
+            print("Database already exists")
+
 
         # Nextcloud Config
         self.URL = get_nextcloud_config_value('overwrite.cli.url', nextcloud_config_path)
@@ -268,8 +279,8 @@ class Ledger:
         self.PAPERLESS_CONSUMER_ENABLE_COLLATE_DOUBLE_SIDED = gco("echo false").lower() == 'false'
         self.PAPERLESS_CONSUMER_COLLATE_DOUBLE_SIDED_SUBDIR_NAME = gco("echo 'double-sided'")
         self.PAPERLESS_CONSUMER_COLLATE_DOUBLE_SIDED_TIFF_SUPPORT = gco("echo false").lower() == 'false'
-        self.PAPERLESS_CONVERT_BINARY = gco("which convert")
-        self.PAPERLESS_GS_BINARY = gco("which gs")
+        #self.PAPERLESS_CONVERT_BINARY = gco("which convert")
+        #self.PAPERLESS_GS_BINARY = gco("which gs")
         self.PAPERLESS_WEBSERVER_WORKERS = 1
         self.PAPERLESS_BIND_ADDR = gco("echo '[::]'")
         self.PAPERLESS_PORT = 8010
@@ -314,7 +325,7 @@ class Ledger:
             "REDIS_PASSWORD": self.REDIS_PASSWORD,
             "POSTGRESHOST": self.POSTGRESHOST,
             "POSTGRESUSER": self.POSTGRESUSER,
-            "POSTGRESDB": self.POSTGRESDB,
+            "POSTGRESDB": self.DATABASEBACKEND,
             "POSTGRESPASSWORD": self.POSTGRESPASSWORD,
             "PAPERLESS_TIME_ZONE": self.PAPERLESS_TIME_ZONE,
             "PAPERLESS_ALLOWED_HOSTS": self.PAPERLESS_ALLOWED_HOSTS,
@@ -378,8 +389,8 @@ class Ledger:
             "PAPERLESS_CONSUMER_ENABLE_COLLATE_DOUBLE_SIDED": self.PAPERLESS_CONSUMER_ENABLE_COLLATE_DOUBLE_SIDED,
             "PAPERLESS_CONSUMER_COLLATE_DOUBLE_SIDED_SUBDIR_NAME": self.PAPERLESS_CONSUMER_COLLATE_DOUBLE_SIDED_SUBDIR_NAME,
             "PAPERLESS_CONSUMER_COLLATE_DOUBLE_SIDED_TIFF_SUPPORT": self.PAPERLESS_CONSUMER_COLLATE_DOUBLE_SIDED_TIFF_SUPPORT,
-            "PAPERLESS_CONVERT_BINARY": self.PAPERLESS_CONVERT_BINARY,
-            "PAPERLESS_GS_BINARY": self.PAPERLESS_GS_BINARY,
+            #"PAPERLESS_CONVERT_BINARY": self.PAPERLESS_CONVERT_BINARY,
+            #"PAPERLESS_GS_BINARY": self.PAPERLESS_GS_BINARY,
             "PAPERLESS_WEBSERVER_WORKERS": self.PAPERLESS_WEBSERVER_WORKERS,
             "PAPERLESS_BIND_ADDR": self.PAPERLESS_BIND_ADDR,
             "PAPERLESS_PORT": self.PAPERLESS_PORT,
