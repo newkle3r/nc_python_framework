@@ -15,18 +15,18 @@ from typing import Any, Callable, Dict, List, Type, TypeVar, cast
 # --------------------------------
 
 nextcloud_config_path = "/var/www/nextcloud/config/config.php"
-ledger_config_path = "/var/scripts/service-API/env_variables.json"
+ledger_config_path = "/var/scripts/service-API/nc_python_framework/env_variables.json"
 with open(ledger_config_path, 'r') as file:
     env_vars = json.load(file)
 
 
 def save_env_variables(env_vars):
-    with open('/var/scripts/service-API/env_variables.json', 'w') as file:
+    with open(ledger_config_path, 'w') as file:
         json.dump(env_vars, file, indent=4)
 
 def get_env_variables():
-    if os.path.exists('/var/scripts/service-API/env_variables.json'):
-        with open('/var/scripts/service-API/env_variables.json', 'r') as file:
+    if os.path.exists(ledger_config_path):
+        with open(ledger_config_path, 'r') as file:
             return json.load(file)
     return {}
 
