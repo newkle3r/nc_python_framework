@@ -36,20 +36,38 @@ else
     fi
 fi
 
-# Check if /var/scripts/service-API exists, if not create it
-if [ ! -d /var/scripts/service-API ]; then
-    mkdir /var/scripts/service-API
+# Check if ~/service-API exists, if not create it
+if [ ! -d ~/service-API ]; then
+    mkdir ~/service-API
     echo "Created ~/service-API directory."
 fi
 
 # move to the service-API directory
-cd /var/scripts/service-API || exit
+cd ~/service-API || exit
 
 # Check if the service-API repository exists, if not clone it
 if [ ! -d /var/scripts/service-API/ ]; then
     git clone https://github.com/newkle3r/nc_python_framework.git
     echo "Cloned the service-API repository."
 fi
+
+# Check if the required files exist, if not download them
+if [ ! -f /var/scripts/service-API/nc_python_framework/main.py ]; then
+    wget https://raw.githubusercontent.com/newkle3r/nc_python_framework/main/main.py -P /var/scripts/service-API/nc_python_framework/
+fi
+if [ ! -f /var/scripts/service-API/nc_python_framework/functions.py ]; then
+    wget https://raw.githubusercontent.com/newkle3r/nc_python_framework/main/functions.py -P /var/scripts/service-API/nc_python_framework/
+fi
+if [ ! -f /var/scripts/service-API/nc_python_framework/Ledger.py ]; then
+    wget https://raw.githubusercontent.com/newkle3r/nc_python_framework/main/Ledger.py -P /var/scripts/service-API/nc_python_framework/
+fi
+if [ ! -f /var/scripts/service-API/nc_python_framework/requirements.txt ]; then
+    wget https://raw.githubusercontent.com/newkle3r/nc_python_framework/main/requirements.txt -P /var/scripts/service-API/nc_python_framework/
+fi
+if [ ! -f /var/scripts/service-API/nc_python_framework/paperless.py ]; then
+    wget https://raw.githubusercontent.com/newkle3r/nc_python_framework/main/paperless.py -P /var/scripts/service-API/nc_python_framework/
+fi
+
 
 # install the requirements.txt
 pip3 install -r /var/scripts/service-API/nc_python_framework/requirements.txt
