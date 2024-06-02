@@ -65,7 +65,7 @@ class Ledger:
     PAPERLESS_CONSUMER_DELETE_DUPLICATES: bool
     PAPERLESS_CONSUMER_RECURSIVE: bool
     PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: bool
-    PAPERLESS_CONSUMER_IGNORE_PATTERNS: str
+    #PAPERLESS_CONSUMER_IGNORE_PATTERNS: str
     PAPERLESS_CONSUMER_BARCODE_SCANNER: str
     PAPERLESS_PRE_CONSUME_SCRIPT: str
     PAPERLESS_POST_CONSUME_SCRIPT: str
@@ -137,9 +137,11 @@ class Ledger:
         with open(nextcloud_config_path, 'r') as file:
             config_content = file.read()
 
+        print("in parse_nextcloud_config")
         nextcloud_config = parse_nextcloud_config(config_content)
         if nextcloud_config is None:
             raise ValueError("Failed to parse Nextcloud config.")
+
 
 
         # Parse Redis config
@@ -270,7 +272,8 @@ class Ledger:
         self.PAPERLESS_CONSUMER_DELETE_DUPLICATES = gco("echo false").lower() == 'false'
         self.PAPERLESS_CONSUMER_RECURSIVE = gco("echo false").lower() == 'false'
         self.PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS = gco("echo false").lower() == 'false'
-        self.PAPERLESS_CONSUMER_IGNORE_PATTERNS = gco("echo '[\".DS_Store\", \".DS_STORE\", \".*\", \".stfolder/*\"]'")
+
+
         self.PAPERLESS_CONSUMER_BARCODE_SCANNER = gco("echo 'PYZBAR'")
         #self.PAPERLESS_PRE_CONSUME_SCRIPT = gco("echo '/path/to/pre_consume.sh'")
         #self.PAPERLESS_POST_CONSUME_SCRIPT = gco("echo '/path/to/post_consume.sh'")
@@ -311,15 +314,20 @@ class Ledger:
         postfix_main_cf = '/etc/postfix/main.cf'
         if os.path.exists(postfix_main_cf):
             self.PAPERLESS_EMAIL_HOST = gco('grep relayhost /etc/postfix/main.cf').split()[1]
+            self.PAPERLESS_EMAIL_PORT = '25'
+            self.PAPERLESS_EMAIL_HOST_USER = input("Enter SMTP host user: ")
+            self.PAPERLESS_EMAIL_FROM = input("Enter SMTP host email address: ")
+            self.PAPERLESS_EMAIL_HOST_PASSWORD = input("Enter SMTP host password: ")
+            self.PAPERLESS_EMAIL_USE_TLS = input("Use TLS? (y/n): ").lower() == 'y'
+            self.PAPERLESS_EMAIL_USE_SSL = input("Use SSL? (y/n): ").lower() == 'y'
         else:
             self.PAPERLESS_EMAIL_HOST = 'localhost'
-
-        self.PAPERLESS_EMAIL_PORT = '25' if self.PAPERLESS_EMAIL_HOST is not None else ''
-        self.PAPERLESS_EMAIL_HOST_USER = input("Enter SMTP host user: ") if self.PAPERLESS_EMAIL_HOST is not None else ''
-        self.PAPERLESS_EMAIL_FROM = input("Enter SMTP host email address: ") if self.PAPERLESS_EMAIL_HOST is not None else ''
-        self.PAPERLESS_EMAIL_HOST_PASSWORD = input("Enter SMTP host password: ") if self.PAPERLESS_EMAIL_HOST is not None else ''
-        self.PAPERLESS_EMAIL_USE_TLS = input("Use TLS? (y/n): ").lower() == 'y' if self.PAPERLESS_EMAIL_HOST is not None else False
-        self.PAPERLESS_EMAIL_USE_SSL = input("Use SSL? (y/n): ").lower() == 'y' if self.PAPERLESS_EMAIL_HOST is not None else False
+            self.PAPERLESS_EMAIL_PORT = ''
+            self.PAPERLESS_EMAIL_HOST_USER = ''
+            self.PAPERLESS_EMAIL_FROM = ''
+            self.PAPERLESS_EMAIL_HOST_PASSWORD = ''
+            self.PAPERLESS_EMAIL_USE_TLS = False
+            self.PAPERLESS_EMAIL_USE_SSL = False
         self.PAPERLESS_REDIS_URL = f"redis://{self.REDISHOST}:{self.REDISPORT}"
         self.PAPERLESS_REDIS_PREFIX = "paperless"
         self.PAPERLESS_DBENGINE = self.DATABASEBACKEND
@@ -383,7 +391,7 @@ class Ledger:
             "PAPERLESS_CONSUMER_DELETE_DUPLICATES": self.PAPERLESS_CONSUMER_DELETE_DUPLICATES,
             "PAPERLESS_CONSUMER_RECURSIVE": self.PAPERLESS_CONSUMER_RECURSIVE,
             "PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS": self.PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS,
-            "PAPERLESS_CONSUMER_IGNORE_PATTERNS": self.PAPERLESS_CONSUMER_IGNORE_PATTERNS,
+            #"PAPERLESS_CONSUMER_IGNORE_PATTERNS": self.PAPERLESS_CONSUMER_IGNORE_PATTERNS,
             "PAPERLESS_CONSUMER_BARCODE_SCANNER": self.PAPERLESS_CONSUMER_BARCODE_SCANNER,
             #"PAPERLESS_PRE_CONSUME_SCRIPT": self.PAPERLESS_PRE_CONSUME_SCRIPT,
             #"PAPERLESS_POST_CONSUME_SCRIPT": self.PAPERLESS_POST_CONSUME_SCRIPT,
