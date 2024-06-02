@@ -111,8 +111,8 @@ class Ledger:
     env_vars: dict
 
     def __init__(self):
-        nextcloud_config_path = '/home/hannes/Documents/Code/nextcloud/service-API/debug-nc-config.php'
-        redis_config_path = '/home/hannes/Documents/Code/nextcloud/service-API/debug-redig-config.txt'
+        nextcloud_config_path = '/var/www/nextcloud/config/config.php'
+        redis_config_path = '/etc/redis/redis.conf'
 
         print(f"Is readable: {os.access(nextcloud_config_path, os.R_OK)}")
         print(f"Is writable: {os.access(nextcloud_config_path, os.W_OK)}")
