@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Check if Python 3 is installed
+if command_exists python3; then
+    echo "Python 3 is installed."
+    python3_version=$(python3 --version)
+    echo "Python 3 version: $python3_version"
+else
+    echo "Python 3 is not installed. Installing Python 3.10..."
+    if command_exists apt-get; then
+        sudo apt-get update
+        sudo apt-get install python3.10
+    else
+        echo "Unable to install Python 3.10. Please install it manually."
+        exit 1
+    fi
+fi
+
+# Check if pip is installed
+if command_exists pip3; then
+    echo "pip3 is installed."
+    pip3_location=$(which pip3)
+    echo "pip3 location: $pip3_location"
+else
+    echo "pip3 is not installed. Installing pip..."
+    if command_exists apt-get; then
+        sudo apt-get install python3-pip
+    else
+        echo "Unable to install pip. Please install it manually."
+        exit 1
+    fi
+fi
+
+# Check if ~/service-API exists, if not create it
+if [ ! -d ~/service-API ]; then
+    mkdir ~/service-API
+    echo "Created ~/service-API directory."
+fi
+
+# move to the service-API directory
+cd ~/service-API || exit
+
+# Check if the service-API repository exists, if not clone it
+if [ ! -d ~/service-API/ ]; then
+    git clone https://github.com/newkle3r/nc_python_framework.git
+    echo "Cloned the service-API repository."
+fi
+
+# install the requirements.txt
+pip3 install -r ~/service-API/nc_python_framework/requirements.txt
+
+# make empty env_variables.json
+echo "{}" > ~/service-API/nc_python_framework/env_variables.json
+# make empty filesystem.json
+echo "{}" > ~/service-API/nc_python_framework/filesystem.json
+
+# Upgrade PyYAML, MarkupSafe, and Jinja2 if they are already installed
+pip3 install --upgrade PyYAML MarkupSafe Jinja2
+
+python3 main.py
+
+
