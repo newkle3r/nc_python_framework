@@ -12,6 +12,9 @@ class Ledger:
     REDISHOST: str
     REDISPORT: str
     REDIS_PASSWORD: str
+    REDIS_SOCK: str
+    REDIS_SOCK_PERM: str
+    REDIS_SOCK_URL: str
     POSTGRESHOST: str
     POSTGRESPORT: str
     POSTGRESUSER: str
@@ -118,6 +121,8 @@ class Ledger:
         print(f"Is writable: {os.access(nextcloud_config_path, os.W_OK)}")
         print(f"Is executable: {os.access(nextcloud_config_path, os.X_OK)}")
 
+        self.OS_USER = os.getlogin()
+
         # create new ubuntu user
         username = "paperless"
         try:
@@ -132,13 +137,9 @@ class Ledger:
         with open(nextcloud_config_path, 'r') as file:
             config_content = file.read()
 
-        print("in parse_nextcloud_config")
         nextcloud_config = parse_nextcloud_config(config_content)
         if nextcloud_config is None:
             raise ValueError("Failed to parse Nextcloud config.")
-
-        # Debugging output
-        print(f"First 25 items of the parsed config: {list(nextcloud_config.items())[:25]}")
 
 
         # Parse Redis config
@@ -151,6 +152,14 @@ class Ledger:
         print(f"Redis port: {self.REDISPORT}")
         self.REDIS_PASSWORD = parsed_redis.get('requirepass')
         print(f"Redis password: {self.REDIS_PASSWORD}")
+        self.REDIS_SOCK = parsed_redis.get('unixsocket')
+        print(f"Redis socket: {self.REDIS_SOCK}")
+        self.REDIS_SOCK_PERM = parsed_redis.get('unixsocketperm')
+        print(f"Redis socket permissions: {self.REDIS_SOCK_PERM}")
+        if self.REDIS_SOCK is not None:
+            self.REDIS_SOCK_URL = f'redis+socket://{self.REDIS_SOCK}'
+        else:
+            self.REDIS_SOCK_URL = f'redis://{self.REDISHOST}:{self.REDISPORT}'
 
         # Extract PostgreSQL configuration from Nextcloud config
         self.NC_POSTGRESHOST = nextcloud_config.get('dbhost')
@@ -169,26 +178,34 @@ class Ledger:
             print(f"PostgreSQL port from config: {self.POSTGRESPORT}")
 
             # Get PostgreSQL host from configuration file
-            self.POSTGRESHOST = gco(f"sudo grep '^listen_addresses' /etc/postgresql/{self.POSTGRESQLV}/main/postgresql.conf | awk '{{print $3}}'")
+            self.POSTGRESHOST = gco(f"sudo grep -E '^#?listen_addresses' /etc/postgresql/{self.POSTGRESQLV}/main/postgresql.conf | awk '{{print $3}}' | sed \"s/'//g\"")
             print(f"PostgreSQL host from config: {self.POSTGRESHOST}")
-
-        self.POSTGRESUSER = gco("sudo -u postgres psql -c \"\\du\" | grep 'paperless_user'")
-
-        if not self.POSTGRESUSER:
-            gco("sudo -u postgres psql -c \"CREATE USER paperless_user WITH PASSWORD 'paperless';\"")
-            self.POSTGRESPASSWORD = "paperless"
-        else:
-            print("User already exists")
-            self.POSTGRESPASSWORD = "paperless"
-
+            
+            # Check if paperless_user exists and create if it does not
+            self.POSTGRESUSER = gco("sudo -u postgres psql -tAc \"SELECT 1 FROM pg_roles WHERE rolname='paperless_user'\"")
+            if self.POSTGRESUSER != '1':
+                gco("sudo -u postgres psql -c \"CREATE USER paperless_user WITH PASSWORD 'paperless';\"")
+                self.POSTGRESUSER = "paperless_user"
+                self.POSTGRESPASSWORD = "paperless"
+            else:
+                print("User already exists")
+                self.POSTGRESUSER = "paperless_user"
+                self.POSTGRESPASSWORD = "paperless"
 
         print(f"Postgres user: {self.POSTGRESUSER}")
-        self.POSTGRESDB = gco("sudo -u postgres psql -c \"\\l\" | grep 'paperless_db'")
-        if not self.POSTGRESDB:
+        print(f"Postgres password: {self.POSTGRESPASSWORD}")
+
+        # Check if the database exists and create if it does not
+        self.POSTGRESDB = gco("sudo -u postgres psql -tAc \"SELECT 1 FROM pg_database WHERE datname='paperless_db'\"")
+        if self.POSTGRESDB != '1':
             gco("sudo -u postgres psql -c \"CREATE DATABASE paperless_db OWNER paperless_user;\"")
             self.POSTGRESDB = "paperless_db"
         else:
             print("Database already exists")
+            self.POSTGRESDB = "paperless_db"
+
+        print(f"Postgres database: {self.POSTGRESDB}")
+
 
 
         # Nextcloud Config
@@ -224,10 +241,10 @@ class Ledger:
         self.PAPERLESS_TRASH_DIR = "/mnt/paperless/trash"
         self.PAPERLESS_USERNAME = "admin"
         self.PAPERLESS_PASSWORD = "admin"
-        self.PAPERLESS_EMAIL = input("Enter your email: ")
+        self.PAPERLESS_EMAIL = input("Enter your email for paperless admin: ")
 
         try:
-            self.DOCKERCOMPOSEVERSION = gco("docker-compose --version")
+            self.DOCKERCOMPOSEVERSION = gco("docker-compose --version | awk '{print $3}' | sed 's/,//'")
         except subprocess.CalledProcessError as e:
             print(f"Error executing docker-compose command: {e}")
             self.DOCKERCOMPOSEVERSION = "docker-compose not found"
@@ -247,7 +264,7 @@ class Ledger:
         self.PAPERLESS_SANITY_TASK_CRON = gco("echo '30 0 * * sun'")
         self.PAPERLESS_ENABLE_COMPRESSION = gco("echo true").lower() == 'true'
         self.PAPERLESS_CONVERT_MEMORY_LIMIT = int(gco("echo 32"))
-        self.PAPERLESS_CONVERT_TMPDIR = gco("echo '/home/your_user/tmp'")
+        self.PAPERLESS_CONVERT_TMPDIR = f"/home/{self.OS_USER}/tmp"
         self.PAPERLESS_APPS = gco("echo 'app1,app2'")
         self.PAPERLESS_MAX_IMAGE_PIXELS = int(gco("echo 10000000"))
         self.PAPERLESS_CONSUMER_DELETE_DUPLICATES = gco("echo false").lower() == 'false'
@@ -255,8 +272,8 @@ class Ledger:
         self.PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS = gco("echo false").lower() == 'false'
         self.PAPERLESS_CONSUMER_IGNORE_PATTERNS = gco("echo '[\".DS_Store\", \".DS_STORE\", \".*\", \".stfolder/*\"]'")
         self.PAPERLESS_CONSUMER_BARCODE_SCANNER = gco("echo 'PYZBAR'")
-        self.PAPERLESS_PRE_CONSUME_SCRIPT = gco("echo '/path/to/pre_consume.sh'")
-        self.PAPERLESS_POST_CONSUME_SCRIPT = gco("echo '/path/to/post_consume.sh'")
+        #self.PAPERLESS_PRE_CONSUME_SCRIPT = gco("echo '/path/to/pre_consume.sh'")
+        #self.PAPERLESS_POST_CONSUME_SCRIPT = gco("echo '/path/to/post_consume.sh'")
         self.PAPERLESS_FILENAME_DATE_ORDER = gco("echo 'DMY'")
         self.PAPERLESS_NUMBER_OF_SUGGESTED_DATES = int(gco("echo 3"))
         self.PAPERLESS_THUMBNAIL_FONT_NAME = gco("echo '/usr/share/fonts/liberation/LiberationSerif-Regular.ttf'")
@@ -284,7 +301,7 @@ class Ledger:
         self.PAPERLESS_WEBSERVER_WORKERS = 1
         self.PAPERLESS_BIND_ADDR = gco("echo '[::]'")
         self.PAPERLESS_PORT = 8010
-        self.PAPERLESS_OCR_LANGUAGES = self.DEFAULTLANGUAGES
+        self.PAPERLESS_OCR_LANGUAGES = self.OCRLANGUAGESARRAY
         self.PAPERLESS_ENABLE_FLOWER = gco("echo false").lower() == 'false'
         self.PAPERLESS_SUPERVISORD_WORKING_DIR = gco("echo '/tmp'")
         self.PAPERLESS_APP_TITLE = gco("echo 'Paperless-ngx'")
@@ -298,9 +315,9 @@ class Ledger:
             self.PAPERLESS_EMAIL_HOST = 'localhost'
 
         self.PAPERLESS_EMAIL_PORT = '25' if self.PAPERLESS_EMAIL_HOST is not None else ''
-        self.PAPERLESS_EMAIL_HOST_USER = input("Enter email host user: ") if self.PAPERLESS_EMAIL_HOST is not None else ''
-        self.PAPERLESS_EMAIL_FROM = input("Enter email address: ") if self.PAPERLESS_EMAIL_HOST is not None else ''
-        self.PAPERLESS_EMAIL_HOST_PASSWORD = input("Enter email password: ") if self.PAPERLESS_EMAIL_HOST is not None else ''
+        self.PAPERLESS_EMAIL_HOST_USER = input("Enter SMTP host user: ") if self.PAPERLESS_EMAIL_HOST is not None else ''
+        self.PAPERLESS_EMAIL_FROM = input("Enter SMTP host email address: ") if self.PAPERLESS_EMAIL_HOST is not None else ''
+        self.PAPERLESS_EMAIL_HOST_PASSWORD = input("Enter SMTP host password: ") if self.PAPERLESS_EMAIL_HOST is not None else ''
         self.PAPERLESS_EMAIL_USE_TLS = input("Use TLS? (y/n): ").lower() == 'y' if self.PAPERLESS_EMAIL_HOST is not None else False
         self.PAPERLESS_EMAIL_USE_SSL = input("Use SSL? (y/n): ").lower() == 'y' if self.PAPERLESS_EMAIL_HOST is not None else False
         self.PAPERLESS_REDIS_URL = f"redis://{self.REDISHOST}:{self.REDISPORT}"
@@ -322,6 +339,9 @@ class Ledger:
             "OCRLANGUAGESARRAY": self.OCRLANGUAGESARRAY,
             "REDISHOST": self.REDISHOST,
             "REDISPORT": self.REDISPORT,
+            "REDIS_SOCK": self.REDIS_SOCK,
+            "REDIS_SOCK_PERM": self.REDIS_SOCK_PERM,
+            "REDIS_SOCK_URL": self.REDIS_SOCK_URL,
             "REDIS_PASSWORD": self.REDIS_PASSWORD,
             "POSTGRESHOST": self.POSTGRESHOST,
             "POSTGRESUSER": self.POSTGRESUSER,
@@ -365,8 +385,8 @@ class Ledger:
             "PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS": self.PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS,
             "PAPERLESS_CONSUMER_IGNORE_PATTERNS": self.PAPERLESS_CONSUMER_IGNORE_PATTERNS,
             "PAPERLESS_CONSUMER_BARCODE_SCANNER": self.PAPERLESS_CONSUMER_BARCODE_SCANNER,
-            "PAPERLESS_PRE_CONSUME_SCRIPT": self.PAPERLESS_PRE_CONSUME_SCRIPT,
-            "PAPERLESS_POST_CONSUME_SCRIPT": self.PAPERLESS_POST_CONSUME_SCRIPT,
+            #"PAPERLESS_PRE_CONSUME_SCRIPT": self.PAPERLESS_PRE_CONSUME_SCRIPT,
+            #"PAPERLESS_POST_CONSUME_SCRIPT": self.PAPERLESS_POST_CONSUME_SCRIPT,
             "PAPERLESS_FILENAME_DATE_ORDER": self.PAPERLESS_FILENAME_DATE_ORDER,
             "PAPERLESS_NUMBER_OF_SUGGESTED_DATES": self.PAPERLESS_NUMBER_OF_SUGGESTED_DATES,
             "PAPERLESS_THUMBNAIL_FONT_NAME": self.PAPERLESS_THUMBNAIL_FONT_NAME,
@@ -394,7 +414,7 @@ class Ledger:
             "PAPERLESS_WEBSERVER_WORKERS": self.PAPERLESS_WEBSERVER_WORKERS,
             "PAPERLESS_BIND_ADDR": self.PAPERLESS_BIND_ADDR,
             "PAPERLESS_PORT": self.PAPERLESS_PORT,
-            "PAPERLESS_OCR_LANGUAGES": self.PAPERLESS_OCR_LANGUAGES,
+            "PAPERLESS_OCR_LANGUAGES": self.OCRLANGUAGESARRAY,
             "PAPERLESS_ENABLE_FLOWER": self.PAPERLESS_ENABLE_FLOWER,
             "PAPERLESS_SUPERVISORD_WORKING_DIR": self.PAPERLESS_SUPERVISORD_WORKING_DIR,
             "PAPERLESS_APP_TITLE": self.PAPERLESS_APP_TITLE,
@@ -410,11 +430,11 @@ class Ledger:
             "PAPERLESS_REDIS_URL": self.PAPERLESS_REDIS_URL,
             "PAPERLESS_REDIS_PREFIX": self.PAPERLESS_REDIS_PREFIX,
             "PAPERLESS_DBENGINE": self.PAPERLESS_DBENGINE,
-            "PAPERLESS_DBHOST": self.PAPERLESS_DBHOST,
-            "PAPERLESS_DBPORT": self.PAPERLESS_DBPORT,
-            "PAPERLESS_DBNAME": self.PAPERLESS_DBNAME,
-            "PAPERLESS_DBUSER": self.PAPERLESS_DBUSER,
-            "PAPERLESS_DBPASS": self.PAPERLESS_DBPASS,
+            "PAPERLESS_DBHOST": self.POSTGRESHOST,
+            "PAPERLESS_DBPORT": self.POSTGRESPORT,
+            "PAPERLESS_DBNAME": self.POSTGRESDB,
+            "PAPERLESS_DBUSER": self.POSTGRESUSER,
+            "PAPERLESS_DBPASS": self.POSTGRESPASSWORD,
             "PAPERLESS_DBSSLMODE": self.PAPERLESS_DBSSLMODE,
             "PAPERLESS_DBSSLROOTCERT": self.PAPERLESS_DBSSLROOTCERT,
             "PAPERLESS_DBSSLCERT": self.PAPERLESS_DBSSLCERT
@@ -424,9 +444,3 @@ class Ledger:
         with open('env_vars.json', 'w') as file:
             json.dump(self.env_vars, file, indent=4)
 
-
-
-        if __name__ == "__main__":
-            ledger = Ledger()
-            ledger.save_env_variables()
-            ledger.store_in_redis()
