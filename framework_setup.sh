@@ -36,32 +36,32 @@ else
     fi
 fi
 
-# Check if ~/service-API exists, if not create it
-if [ ! -d ~/service-API ]; then
-    mkdir ~/service-API
+# Check if /var/scripts/service-API exists, if not create it
+if [ ! -d /var/scripts/service-API ]; then
+    mkdir /var/scripts/service-API
     echo "Created ~/service-API directory."
 fi
 
 # move to the service-API directory
-cd ~/service-API || exit
+cd /var/scripts/service-API || exit
 
 # Check if the service-API repository exists, if not clone it
-if [ ! -d ~/service-API/ ]; then
+if [ ! -d /var/scripts/service-API/ ]; then
     git clone https://github.com/newkle3r/nc_python_framework.git
     echo "Cloned the service-API repository."
 fi
 
 # install the requirements.txt
-pip3 install -r ~/service-API/nc_python_framework/requirements.txt
+pip3 install -r /var/scripts/service-API/nc_python_framework/requirements.txt
 
 # make empty env_variables.json
-echo "{}" > ~/service-API/nc_python_framework/env_variables.json
+echo "{}" > /var/scripts/service-API/nc_python_framework/env_variables.json
 # make empty filesystem.json
-echo "{}" > ~/service-API/nc_python_framework/filesystem.json
+echo "{}" > /var/scripts/service-API/nc_python_framework/filesystem.json
 
 # Upgrade PyYAML, MarkupSafe, and Jinja2 if they are already installed
 pip3 install --upgrade PyYAML MarkupSafe Jinja2
 
-python3 ~/service-API/nc_python_framework/main.py
+python3 /var/scripts/service-API/nc_python_framework/main.py
 
 
