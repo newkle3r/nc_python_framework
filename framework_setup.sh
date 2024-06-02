@@ -62,6 +62,6 @@ echo "{}" > ~/service-API/nc_python_framework/filesystem.json
 # Upgrade PyYAML, MarkupSafe, and Jinja2 if they are already installed
 pip3 install --upgrade PyYAML MarkupSafe Jinja2
 
-python3 main.py
+python3 ~/service-API/nc_python_framework/main.py
 
 
