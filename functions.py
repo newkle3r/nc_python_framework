@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Type, TypeVar, cast
 # Load/Save Environment Variables
 # --------------------------------
 
-nextcloud_config_path = "/var/www/nextcloud/config.php"
+nextcloud_config_path = "/var/www/nextcloud/config/config.php"
 ledger_config_path = "~/service-API/nc_python_framework/env_variables.json"
 with open(ledger_config_path, 'r') as file:
     env_vars = json.load(file)
