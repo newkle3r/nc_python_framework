@@ -4,7 +4,7 @@ from paperless import generate_docker_compose
 
 
 def main():
-    check_file_permissions("nextcloud/service-API/debug-nc-config.php")
+    check_file_permissions("/var/www/nextcloud/config/config.php")
     ledger = Ledger()
 
 
